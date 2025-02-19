@@ -1,1 +1,2 @@
-module.exports.DB_NAME = "videotube";
+DB_NAME = "videotube";
+module.exports = DB_NAME;
