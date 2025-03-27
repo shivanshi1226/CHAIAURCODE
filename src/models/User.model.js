@@ -1,6 +1,7 @@
 const mongoose = require("mongoose")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken") //jwt is a bearer token
+const Video = require("./Video.model")
 const userSchema = new mongoose.Schema({
     username : {
         type: String,
@@ -32,7 +33,7 @@ const userSchema = new mongoose.Schema({
     }, 
     watchHistory : [
     {
-        type: Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId, 
         ref: "Video",
     } 
     ],
@@ -50,7 +51,7 @@ userSchema.pre("save",async function(err,req,res,next){
     if(!this.isModified("password")){
         return next();
     }
-    this.password = bcrypt.hash(this.password,2)
+    this.password = await bcrypt.hash(this.password,2)
     next();
 })
 userSchema.methods.isPasswordCorrect = async function (password){
@@ -70,7 +71,7 @@ userSchema.methods.accessToken = async function (){
         }
     )
 }
-userSchema.methods.refreshToken = async function (){
+userSchema.methods.generaterefreshToken = async function (){
     jwt.sign(
         {
             _id: this._id,

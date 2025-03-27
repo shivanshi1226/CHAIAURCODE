@@ -1,5 +1,6 @@
 const mongoose = require("mongoose")
 const mongooseAggregatePaginate = require("mongoose-aggregate-paginate-v2")
+const User = require("./User.model")
 const VideoSchema = new mongoose.Schema({
     videoFile : {
         type : String, //cloudinary url
@@ -29,8 +30,8 @@ const VideoSchema = new mongoose.Schema({
         type : Boolean,
         default : true
     },
-    owner : {
-        type : Schema.Types.ObjectId,
+    owner: {
+        type: mongoose.Schema.Types.ObjectId, 
         ref: "User"
     }
 },{
