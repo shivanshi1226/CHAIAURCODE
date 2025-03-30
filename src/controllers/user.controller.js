@@ -5,6 +5,7 @@ const uploadOnCloudinary = require("../utils/cloudinary.js")
 const APIResponse = require("../utils/APIResponse.js")
 const jwt = require("jsonwebtoken")
 const { options } = require('../routes/user.routes.js')
+
 const generateAccessAndRefreshToken = async (userId) => {
   try {
     const user = await User.findById(userId)
@@ -196,9 +197,71 @@ const refreshAccessToken = asyncHandler(async(req,res)=>{
   throw new ApiError(401,error?.message||"Invalid refresh Token")
 }
 })
+
+const changeCurrentPassword = asyncHandler(async(req,res)=>{
+  const {oldPassword,newPassword,confirmPassword} = req.body
+  if(!(newPassword===confirmPassword)){
+    throw new ApiError(400,"Password didn't matched")
+  }
+  const user = await User.findById(req.user?.id)
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+  if(!isPasswordCorrect){
+    throw new ApiError(400,"Invalid Old Password")
+  }
+  user.password = newPassword
+  await user.save({validateBeforeSave:false})
+  return res.status(200).json(new APIResponse(200,{},"password changes successfully"))
+})
+
+const getCurrentUser = asyncHandler(async(req,res)=>{
+  return res.
+  status(200).$orjson(200,req.user,"current user fetched successfully")
+})
+
+const updateAccountDetails = asyncHandler(async(req,res)=>{
+  const {fullname,email} = req.body
+  if(!fullname || !email){
+    throw new ApiError(400,"All fields are required")
+  }
+  const user = await User.findByIdAndUpdate(req.user?._id,
+  {
+    $set:{
+      fullname:fullname,
+      email:email
+    }
+  },
+  {new:true}).select("-password")
+  return res.
+  status(200).
+  json(new APIResponse(200,user,"Account details updated successfully"))
+})
+
+const updateAvatarDetails = asyncHandler(async(req,res)=>{
+  const avatarLocalPath = req.file?.path
+  if(avatarLocalPath){
+    throw new ApiError(400,"Avatar file in missing")
+  }
+  const avatar = await uploadOnCloudinary(avatarLocalPath)
+  if(!(avatar.url)){
+    throw new ApiError(400,"Error while uploading on cloudinary")
+  }
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set:{
+        avatar: avatar.url
+      }
+    },
+    {new: true}
+  ).select("-password")
+})
 module.exports = {
   registerUser,
   loginUser,
   logOutUser,
-  refreshAccessToken
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateAccountDetails,
+  updateAvatarDetails
 }
