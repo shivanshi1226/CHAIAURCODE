@@ -5,6 +5,7 @@ const uploadOnCloudinary = require("../utils/cloudinary.js")
 const APIResponse = require("../utils/APIResponse.js")
 const jwt = require("jsonwebtoken")
 const { options } = require('../routes/user.routes.js')
+const { default: mongoose } = require('mongoose')
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -278,6 +279,81 @@ const updateUserCoverImage = asyncHandler(async(req,res)=>{
   return res.status(200).json(new APIResponse(200,user,"Cover Image uploaded successfully"))
 })
 
+const getUserChannelPofile = asyncHandler(async(req,res)=>{
+  const {username} = req.params
+  if(!username?.trim()){
+    throw new ApiError(400,"Username is missing")
+  }
+  const channel = await User.aggregate([
+    {
+      $match: {
+        username:username?.toLowerCase
+      }
+    },
+    {
+      $lookup: {
+        from :"subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as : "subscribers"
+      }
+    },
+    {
+      $lookup: {
+        from :"subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as : "subscribed_to"
+      }
+    },
+    {
+      $addFields: {
+        subscribersCount: {
+          $size : "$subscribers"
+        },
+        channelSubscribedToCount : {
+          $size: "$subscribed_to"
+        },
+        isSubscribed: {
+          $cond: {
+            if: {$in : [req.user?._id,"$subscribers.subscriber"]},
+            then: true,
+            else: false
+          }
+        }
+      }
+    },
+    {
+      $project: {
+        fullname: 1,
+        username:1,
+        subscribersCount:1,
+        channelSubscribedToCount:1,
+        isSubscribed:1,
+        avatar:1,
+        coverImage:1,
+        email:1,
+      }
+    }
+  ])
+  console.log(channel)
+  if(!channel?.length){
+    throw new ApiError(404,"Channel does not exists")
+  }
+
+  return res.status(200).json(
+    new APIResponse(200,channel[0],"User channel fetched")
+  )
+})
+const getWatchHistory = asyncHandler(async(req,res)=>{
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id )
+      }
+    }
+  ])
+})
 module.exports = {
   registerUser,
   loginUser,
@@ -286,5 +362,6 @@ module.exports = {
   changeCurrentPassword,
   getCurrentUser,
   updateAccountDetails,
-  updateAvatarDetails
+  updateAvatarDetails,
+  getUserChannelPofile
 }
